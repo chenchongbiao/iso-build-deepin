@@ -1,0 +1,137 @@
+#!/bin/bash
+
+set -eux
+
+source tools/chroot
+
+source tools/install_tool
+
+# 初始化变量
+WORKDIR="$(pwd)"
+ARCH=$1
+DISTRO_VERSION="crimson"
+DISTRO_NAME="deepin"
+SOURCES_FILE="config/sources.list"
+ROOTFS=$WORKDIR/cache/rootfs/$DISTRO_NAME-$DISTRO_VERSION-$ARCH
+ISO=$WORKDIR/output/$DISTRO_NAME-$DISTRO_VERSION-$ARCH.iso
+readarray -t REPOS < $SOURCES_FILE
+PACKAGE_FILE="config/base_package.txt"
+PACKAGES=$(cat $PACKAGE_FILE | grep -v "^-" | xargs | sed -e 's/ /,/g')
+DEVICE_CONFIG_PATH=$WORKDIR/arch/$ARCH
+STAGING=$WORKDIR/cache/staging
+TMP=$WORKDIR/cache/tmp
+CACHE=$WORKDIR/cache
+LOCALES=${LOCALES:-en-US.UTF-8}
+
+# 初始化操作
+source tools/init
+
+# 创建根文件系统
+if [[ ! -d "$ROOTFS" ]]; then
+    source tools/rootfs
+    build_rootfs
+
+    MOUNT_DIR=$ROOTFS
+    setup_chroot_environment
+
+    run_command_in_chroot "apt update -y"
+    PACKAGES=$(cat config/desktop_package.txt | xargs)
+    # 这里有个 dde-services 和 deepin-service-plugins 冲突问题，用 || true 先跳过
+    install_packages "$PACKAGES" || true
+    # 安装错误后需要重新配置下
+    run_command_in_chroot "dpkg --configure -a"
+
+    PACKAGES=$(cat $DEVICE_CONFIG_PATH/config/package.txt | xargs)
+    install_packages "$PACKAGES"
+
+    echo "$DISTRO_NAME-$ARCH" | sudo tee $ROOTFS/etc/hostname
+
+    # 这里的浏览器用的玲珑应用，删除该 desktop
+    run_command_in_chroot "rm /etc/skel/Desktop/org.deepin.browser.desktop"
+
+    run_command_in_chroot "systemctl enable lightdm"
+
+    clear_cache
+    umount_chroot
+fi
+
+sudo cp -a $ROOTFS/* $TMP
+
+case $ARCH in
+"amd64")
+    ARCH_EFI="x86_64-efi"
+    BOOT_EFI_FILE="bootx64.efi"
+    ;;
+"arm64")
+    ARCH_EFI="arm64-efi"
+    BOOT_EFI_FILE="bootaa64.efi"
+esac
+mkdir -p $STAGING/boot/grub/${ARCH_EFI}
+
+# 拷贝 BootLoader 文件
+cp $TMP/usr/lib/ISOLINUX/isohdpfx.bin $TMP
+cp $TMP/usr/lib/ISOLINUX/isolinux.bin $STAGING/isolinux
+cp $TMP/usr/lib/syslinux/modules/bios/* $STAGING/isolinux
+
+cp -r $TMP/usr/lib/grub/$ARCH_EFI/* $STAGING/boot/grub/$ARCH_EFI
+
+cp $TMP/boot/vmlinuz-* $STAGING/live/vmlinuz
+cp $TMP/boot/initrd.img-* $STAGING/live/initrd
+
+sudo mksquashfs \
+    $TMP \
+    $STAGING/live/filesystem.squashfs
+
+source tools/iso
+ISOLINUX_CFG="$STAGING/isolinux/isolinux.cfg"
+generate_isolinux_cfg
+
+GRUB_CFG="$STAGING/boot/grub/grub.cfg"
+generate_grub_cfg
+
+GRUB_STANDALONE_CFG="$TMP/grub-standalone.cfg"
+generate_grub_standalone_cfg
+
+MOUNT_DIR=$TMP
+if [[ $(unmae -m) != $(run_command_in_chroot "uname -m") ]];
+then
+    # 异架构构建，拷贝构建好的二进制。
+    cp $DEVICE_CONFIG_PATH/$BOOT_EFI_FILE $TMP
+else
+    # 创建一个独立的GRUB2 EFI可执行文件
+    grub-mkstandalone \
+        --format=$ARCH_EFI \
+        --output=$TMP/$BOOT_EFI_FILE \
+        --locales="" \
+        --fonts="" \
+        "boot/grub/grub.cfg=$GRUB_STANDALONE_CFG"
+fi
+
+# 创建一个EFI系统分区镜像文件
+EFI_BOOT_IMG="$STAGING/EFI/boot/efiboot.img"
+dd if=/dev/zero of=$EFI_BOOT_IMG bs=1M count=20
+/sbin/mkfs.vfat $EFI_BOOT_IMG
+mmd -i $EFI_BOOT_IMG efi efi/boot
+mcopy -vi $EFI_BOOT_IMG $TMP/$BOOT_EFI_FILE ::efi/boot/
+
+[[ -f $ISO ]] && rm $ISO
+
+xorriso \
+    -as mkisofs \
+    -iso-level 3 \
+    -o $ISO \
+    -full-iso9660-filenames \
+    -volid "deepin" \
+    -isohybrid-mbr $TMP/isohdpfx.bin \
+    -eltorito-boot \
+        isolinux/isolinux.bin \
+        -no-emul-boot \
+        -boot-load-size 4 \
+        -boot-info-table \
+        --eltorito-catalog isolinux/isolinux.cat \
+    -eltorito-alt-boot \
+        -e /EFI/boot/efiboot.img \
+        -no-emul-boot \
+        -isohybrid-gpt-basdat \
+    -append_partition 2 0xef $STAGING/EFI/boot/efiboot.img \
+        $STAGING

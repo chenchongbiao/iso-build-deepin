@@ -1,0 +1,44 @@
+#!/bin/bash
+
+set -u
+
+function setup_chroot_environment() {
+    sudo mount --bind /dev "$MOUNT_DIR/dev"
+    sudo mount -t proc chproc "$MOUNT_DIR/proc"
+    sudo mount -t sysfs chsys "$MOUNT_DIR/sys"
+    sudo mount -t tmpfs -o "size=99%" tmpfs "$MOUNT_DIR/tmp"
+    sudo mount -t tmpfs -o "size=99%" tmpfs "$MOUNT_DIR/var/tmp"
+    sudo mount -t devpts devpts "$MOUNT_DIR/dev/pts"
+    sudo mount --bind /etc/resolv.conf $MOUNT_DIR/etc/resolv.conf
+}
+
+function umount_chroot() {
+    # 持续循环直到没有指定挂载点
+    while grep -q -E "${MOUNT_DIR}/(dev|proc|sys|tmp|var/tmp|resolv.conf)" /proc/mounts; do
+        sudo umount "${MOUNT_DIR}/dev/pts" || true
+        sudo umount -R "${MOUNT_DIR}/dev" || true
+        sudo umount "${MOUNT_DIR}/proc" || true
+        sudo umount "${MOUNT_DIR}/sys" || true
+        sudo umount "${MOUNT_DIR}/tmp" || true
+        sudo umount "${MOUNT_DIR}/var/tmp" || true
+        sudo umount "${MOUNT_DIR}/etc/resolv.conf" || true
+    done
+    sudo umount -l "${MOUNT_DIR}" || true
+}
+
+function run_command_in_chroot() {
+    sudo env DEBIAN_FRONTEND=noninteractive chroot "$MOUNT_DIR" bash -c "$@"
+}
+
+function install_packages() {
+    run_command_in_chroot "apt install -y $PACKAGES"
+}
+
+function clear_cache() {
+    run_command_in_chroot "apt clean
+rm -rf /var/cache/apt/archives/*
+rm -f /root/.bash_history
+rm -rf /var/log/*"
+}
+
+export -f setup_chroot_environment run_command_in_chroot umount_chroot install_packages clear_cache

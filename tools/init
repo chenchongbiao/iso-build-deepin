@@ -1,0 +1,4 @@
+#!/bin/bash
+
+sudo rm -rf $TMP $STAGING
+mkdir -p "$WORKDIR"/{cache/{rootfs,staging/{EFI,boot/grub/,EFI/boot,isolinux,live},tmp},output}

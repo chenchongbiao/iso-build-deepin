@@ -1,0 +1,6 @@
+deepin-desktop-environment-base
+deepin-desktop-environment-cli
+deepin-desktop-environment-core
+deepin-desktop-environment-extras
+firefox
+calamares-settings-deepin

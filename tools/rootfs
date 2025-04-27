@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -u
+
+function build_rootfs() {
+    sudo mmdebstrap \
+        --hook-dir=/usr/share/mmdebstrap/hooks/merged-usr \
+        --include=$PACKAGES \
+        --components="main,commercial,community" \
+        --variant=minbase \
+        --architectures=$ARCH \
+        $DISTRO_VERSION \
+        $ROOTFS \
+        "${REPOS[@]}"
+}
+
+export -f build_rootfs

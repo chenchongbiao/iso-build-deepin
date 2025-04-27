@@ -1,0 +1,11 @@
+#!/bin/bash
+
+sudo apt update -y
+if [[ "$(uname -m)" == "x86_64" ]];
+then
+    # 在 x86 上构建，需要利用 qemu 并开启 binfmt 异架构支持
+    sudo apt-get install -y qemu-user-static binfmt-support arch-test qemu-system-misc
+    sudo systemctl restart systemd-binfmt
+fi
+
+sudo apt-get install -y mmdebstrap usrmerge usr-is-merged e2fsprogs dosfstools xorriso

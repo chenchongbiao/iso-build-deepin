@@ -1,0 +1,3 @@
+linux-image-deepin-hwe-amd64
+linux-headers-deepin-hwe-amd64
+grub-efi-amd64-bin
