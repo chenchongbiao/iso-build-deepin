@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# 二进制目录
+binary=$1
+iso=$2
+
+xorriso \
+    -as mkisofs \
+    -r \
+    -iso-level 3 \
+    -o $iso \
+    -no-pad \
+    -full-iso9660-filenames \
+    -V "deepin" \
+    -appended_part_as_gpt \
+    -iso_mbr_part_type 'default' \
+    -c '/boot.catalog' \
+    -eltorito-boot isolinux/isolinux.bin \
+    -no-emul-boot \
+    -boot-load-size 4 \
+    -boot-info-table \
+    --eltorito-catalog isolinux/isolinux.cat \
+    -eltorito-alt-boot \
+    -e /boot/efi.img \
+    -no-emul-boot \
+    -isohybrid-gpt-basdat \
+    -isohybrid-apm-hfsplus \
+    $binary

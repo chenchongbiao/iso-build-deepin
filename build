@@ -65,6 +65,11 @@ case $ARCH in
 "arm64")
     ARCH_EFI="arm64-efi"
     BOOT_EFI_FILE="bootaa64.efi"
+    ;;
+"loongarch64")
+    ARCH_EFI="loongarch64-efi"
+    BOOT_EFI_FILE="bootloongarch64.efi"
+    ;;
 esac
 mkdir -p $STAGING/boot/grub/${ARCH_EFI}
 
@@ -93,45 +98,11 @@ GRUB_STANDALONE_CFG="$TMP/grub-standalone.cfg"
 generate_grub_standalone_cfg
 
 MOUNT_DIR=$TMP
-if [[ $(unmae -m) != $(run_command_in_chroot "uname -m") ]];
-then
-    # 异架构构建，拷贝构建好的二进制。
-    cp $DEVICE_CONFIG_PATH/$BOOT_EFI_FILE $TMP
-else
-    # 创建一个独立的GRUB2 EFI可执行文件
-    grub-mkstandalone \
-        --format=$ARCH_EFI \
-        --output=$TMP/$BOOT_EFI_FILE \
-        --locales="" \
-        --fonts="" \
-        "boot/grub/grub.cfg=$GRUB_STANDALONE_CFG"
-fi
+generate_efi_file
 
 # 创建一个EFI系统分区镜像文件
-EFI_BOOT_IMG="$STAGING/EFI/boot/efiboot.img"
-dd if=/dev/zero of=$EFI_BOOT_IMG bs=1M count=20
-/sbin/mkfs.vfat $EFI_BOOT_IMG
-mmd -i $EFI_BOOT_IMG efi efi/boot
-mcopy -vi $EFI_BOOT_IMG $TMP/$BOOT_EFI_FILE ::efi/boot/
+generate_efi_img
 
 [[ -f $ISO ]] && rm $ISO
 
-xorriso \
-    -as mkisofs \
-    -iso-level 3 \
-    -o $ISO \
-    -full-iso9660-filenames \
-    -volid "deepin" \
-    -isohybrid-mbr $TMP/isohdpfx.bin \
-    -eltorito-boot \
-        isolinux/isolinux.bin \
-        -no-emul-boot \
-        -boot-load-size 4 \
-        -boot-info-table \
-        --eltorito-catalog isolinux/isolinux.cat \
-    -eltorito-alt-boot \
-        -e /EFI/boot/efiboot.img \
-        -no-emul-boot \
-        -isohybrid-gpt-basdat \
-    -append_partition 2 0xef $STAGING/EFI/boot/efiboot.img \
-        $STAGING
+generate_iso

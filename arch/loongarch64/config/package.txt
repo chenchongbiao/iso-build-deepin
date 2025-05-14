@@ -1,0 +1,3 @@
+linux-image-deepin-hwe-loong64
+linux-headers-deepin-hwe-loong64
+grub-efi-loong64-bin

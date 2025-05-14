@@ -20,4 +20,12 @@ export LOCALES=zh_CN.UTF-8
 ./build arm64
 ```
 
+## loongarch64
+
+```bash
+# 设置系统为中文，默认为 en_US.UTF-8
+export LOCALES=zh_CN.UTF-8
+./build loongarch64
+```
+
 live user 用户密码为 live

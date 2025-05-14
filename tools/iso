@@ -66,5 +66,56 @@ set prefix=(\$root)/boot/grub/
 configfile /boot/grub/grub.cfg
 EOF
 }
+function generate_efi_file() {
+    if [[ $(uname -m) != $(run_command_in_chroot "uname -m") ]];
+    then
+        # 异架构构建，拷贝构建好的二进制。
+        cp $DEVICE_CONFIG_PATH/$BOOT_EFI_FILE $STAGING/EFI/boot
+    else
+        # 创建一个独立的GRUB2 EFI可执行文件
+        grub-mkstandalone \
+            --format=$ARCH_EFI \
+            --output=$STAGING/EFI/boot/$BOOT_EFI_FILE \
+            --locales="" \
+            --fonts="" \
+            "boot/grub/grub.cfg=$GRUB_STANDALONE_CFG"
+    fi
+}
 
-export -f generate_isolinux_cfg generate_grub_cfg generate_grub_standalone_cfg
+function generate_efi_img() {
+    # 创建一个EFI系统分区镜像文件
+    EFI_BOOT_IMG="$STAGING/boot/efi.img"
+    dd if=/dev/zero of=$EFI_BOOT_IMG bs=1M count=4
+    /sbin/mkfs.vfat $EFI_BOOT_IMG
+    mmd -i $EFI_BOOT_IMG efi efi/boot
+    sudo fatlabel $EFI_BOOT_IMG ESP
+    mcopy -vi $EFI_BOOT_IMG $STAGING/EFI/boot/$BOOT_EFI_FILE ::efi/boot/
+}
+
+function generate_iso() {
+    xorriso \
+        -as mkisofs \
+        -r \
+        -iso-level 3 \
+        -o $ISO \
+        -no-pad \
+        -full-iso9660-filenames \
+        -V "deepin" \
+        -isohybrid-mbr $TMP/isohdpfx.bin \
+        -appended_part_as_gpt \
+        -iso_mbr_part_type 'default' \
+        -c '/boot.catalog' \
+        -eltorito-boot isolinux/isolinux.bin \
+        -no-emul-boot \
+        -boot-load-size 4 \
+        -boot-info-table \
+        --eltorito-catalog isolinux/isolinux.cat \
+        -eltorito-alt-boot \
+        -e /boot/efi.img \
+        -no-emul-boot \
+        -isohybrid-gpt-basdat \
+        -isohybrid-apm-hfsplus \
+        $STAGING
+}
+
+export -f generate_isolinux_cfg generate_grub_cfg generate_grub_standalone_cfg generate_efi_file generate_efi_img generate_iso

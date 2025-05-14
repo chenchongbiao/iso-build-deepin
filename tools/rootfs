@@ -3,6 +3,10 @@
 set -u
 
 function build_rootfs() {
+    local OLD_ARCH="$ARCH"
+    # loongarch64 架构上，deb 包的架构被定义为 loong64，这里临时修改变量
+    [ "$ARCH" = "loongarch64" ] && ARCH="loong64"
+
     sudo mmdebstrap \
         --hook-dir=/usr/share/mmdebstrap/hooks/merged-usr \
         --include=$PACKAGES \
@@ -12,6 +16,8 @@ function build_rootfs() {
         $DISTRO_VERSION \
         $ROOTFS \
         "${REPOS[@]}"
+
+    ARCH="$OLD_ARCH"
 }
 
 export -f build_rootfs
