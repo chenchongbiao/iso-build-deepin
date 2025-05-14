@@ -1,0 +1,15 @@
+#!/bin/bash
+
+function download_offline_debs() {
+    run_command_in_chroot "apt update -y"
+    run_command_in_chroot "apt-get install -y -o Dir::Cache::archives=$downloaded_dir --download-only $offline_packages" || true
+
+    # 生成Packages文件：在包含.deb包的目录下运行以下命令以生成Packages文件。这个文件包含了所有deb包的元数据。
+    # 这将生成压缩版本的Packages.gz和Packages.xz文件，它们会被APT用于快速检索软件包信息
+    pushd $TMP/$downloaded_dir
+    sudo dpkg-scanpackages . /dev/null | sudo gzip -9c | sudo tee Packages.gz
+    sudo dpkg-scanpackages . /dev/null | sudo xz -9zc | sudo tee Packages.xz
+    popd
+}
+
+export -f download_offline_debs

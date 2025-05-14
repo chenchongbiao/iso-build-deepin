@@ -20,7 +20,6 @@ PACKAGES=$(cat $PACKAGE_FILE | grep -v "^-" | xargs | sed -e 's/ /,/g')
 DEVICE_CONFIG_PATH=$WORKDIR/arch/$ARCH
 STAGING=$WORKDIR/cache/staging
 TMP=$WORKDIR/cache/tmp
-CACHE=$WORKDIR/cache
 LOCALES=${LOCALES:-en-US.UTF-8}
 
 # 初始化操作
@@ -74,7 +73,6 @@ esac
 mkdir -p $STAGING/boot/grub/${ARCH_EFI}
 
 # 拷贝 BootLoader 文件
-cp $TMP/usr/lib/ISOLINUX/isohdpfx.bin $TMP
 cp $TMP/usr/lib/ISOLINUX/isolinux.bin $STAGING/isolinux
 cp $TMP/usr/lib/syslinux/modules/bios/* $STAGING/isolinux
 
@@ -82,6 +80,21 @@ cp -r $TMP/usr/lib/grub/$ARCH_EFI/* $STAGING/boot/grub/$ARCH_EFI
 
 cp $TMP/boot/vmlinuz-* $STAGING/live/vmlinuz
 cp $TMP/boot/initrd.img-* $STAGING/live/initrd
+
+export MOUNT_DIR=$TMP
+setup_chroot_environment
+
+# 添加 grub-efi 离线包，chroot 进入根文件系统下载，根据缺少的包进行下载。
+source tools/deb
+downloaded_dir="/tmp/deb"
+run_command_in_chroot "mkdir -p $downloaded_dir"
+offline_packages="grub-efi"
+[[ "$ARCH" == "amd64" ]] && offline_packages+=" grub-pc"
+download_offline_debs
+run_command_in_chroot "rm -rf $downloaded_dir/{lock,partial}"
+sudo mv $TMP/$downloaded_dir $STAGING
+clear_cache
+umount_chroot
 
 sudo mksquashfs \
     $TMP \
@@ -104,5 +117,5 @@ generate_efi_file
 generate_efi_img
 
 [[ -f $ISO ]] && rm $ISO
-
+cp $TMP/usr/lib/ISOLINUX/isohdpfx.bin $TMP
 generate_iso

@@ -1,4 +1,8 @@
 #!/bin/bash
 
+export MOUNT_DIR=$ROOTFS
+umount_chroot
+export MOUNT_DIR=$TMP
+umount_chroot
 sudo rm -rf $TMP $STAGING
 mkdir -p "$WORKDIR"/{cache/{rootfs,staging/{EFI,boot/grub/,EFI/boot,isolinux,live},tmp},output}
