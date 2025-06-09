@@ -45,9 +45,6 @@ if [[ ! -d "$ROOTFS" ]]; then
 
     echo "$DISTRO_NAME-$ARCH" | sudo tee $ROOTFS/etc/hostname
 
-    # 这里的浏览器用的玲珑应用，删除该 desktop
-    run_command_in_chroot "rm /etc/skel/Desktop/org.deepin.browser.desktop"
-
     run_command_in_chroot "systemctl enable lightdm"
 
     clear_cache
