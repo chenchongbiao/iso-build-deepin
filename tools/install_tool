@@ -8,4 +8,4 @@ then
     sudo systemctl restart systemd-binfmt
 fi
 
-sudo apt-get install -y mmdebstrap usrmerge usr-is-merged e2fsprogs dosfstools xorriso
+sudo apt-get install -y mmdebstrap usrmerge usr-is-merged e2fsprogs dosfstools xorriso squashfs-tools
