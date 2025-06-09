@@ -60,11 +60,13 @@ EOF
 }
 
 function generate_grub_standalone_cfg() {
-    sudo tee $GRUB_STANDALONE_CFG <<EOF
+    run_command_in_chroot "
+cat > $GRUB_STANDALONE_CFG <<'EOF'
 search --set=root --label deepin
 set prefix=(\$root)/boot/grub/
 configfile /boot/grub/grub.cfg
 EOF
+"
 }
 function generate_efi_file() {
     if [[ $(uname -m) != $(run_command_in_chroot "uname -m") ]];
@@ -73,12 +75,13 @@ function generate_efi_file() {
         cp $DEVICE_CONFIG_PATH/$BOOT_EFI_FILE $STAGING/EFI/boot
     else
         # 创建一个独立的GRUB2 EFI可执行文件
-        grub-mkstandalone \
-            --format=$ARCH_EFI \
-            --output=$STAGING/EFI/boot/$BOOT_EFI_FILE \
-            --locales="" \
-            --fonts="" \
-            "boot/grub/grub.cfg=$GRUB_STANDALONE_CFG"
+    run_command_in_chroot "grub-mkstandalone \
+        --format=$ARCH_EFI \
+        --output=$BOOT_EFI_FILE \
+        --locales="" \
+        --fonts="" \
+        boot/grub/grub.cfg=$GRUB_STANDALONE_CFG"
+    mv $TMP/$BOOT_EFI_FILE $STAGING/EFI/boot
     fi
 }
 

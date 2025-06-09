@@ -104,7 +104,7 @@ generate_isolinux_cfg
 GRUB_CFG="$STAGING/boot/grub/grub.cfg"
 generate_grub_cfg
 
-GRUB_STANDALONE_CFG="$TMP/grub-standalone.cfg"
+GRUB_STANDALONE_CFG="grub-standalone.cfg"
 generate_grub_standalone_cfg
 
 MOUNT_DIR=$TMP
