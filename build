@@ -94,7 +94,7 @@ clear_cache
 umount_chroot
 
 sudo mksquashfs \
-    $TMP \
+    "$TMP/"* \
     $STAGING/live/filesystem.squashfs
 
 source tools/iso
