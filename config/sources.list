@@ -1,2 +1,1 @@
 deb https://community-packages.deepin.com/beige/ crimson main commercial community
-deb [trusted=yes] https://ci.deepin.com/repo/obs/deepin:/CI:/TestingIntegration:/test-integration-pr-3032:/community/testing/ ./
