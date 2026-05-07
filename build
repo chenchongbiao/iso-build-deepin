@@ -86,7 +86,8 @@ source tools/deb
 downloaded_dir="/tmp/deb"
 run_command_in_chroot "mkdir -p $downloaded_dir"
 offline_packages="grub-efi"
-[[ "$ARCH" == "amd64" ]] && offline_packages+=" grub-pc"
+download_offline_debs
+[[ "$ARCH" == "amd64" ]] && offline_packages="grub-pc"
 download_offline_debs
 run_command_in_chroot "rm -rf $downloaded_dir/{lock,partial}"
 sudo mv $TMP/$downloaded_dir $STAGING
