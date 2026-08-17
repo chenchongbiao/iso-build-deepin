@@ -1,3 +1,5 @@
+
+
 # 介绍
 
 构建 deepin 系统镜像。脚本内容只针对 deepin 系统进行构建，如果需要定制内容请自行修改，如果需要完整系统体验，请访问官网：https://www.deepin.org/zh/download/
@@ -28,4 +30,4 @@ export LOCALES=zh_CN.UTF-8
 ./build loongarch64
 ```
 
-live user 用户密码为 live
+live 用户密码为 live
